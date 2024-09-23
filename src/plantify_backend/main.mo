@@ -1,10 +1,8 @@
 import Buffer "mo:base/Buffer";
-import Vec "mo:vector";
 import Principal "mo:base/Principal";
 import Time "mo:base/Time";
 import Nat "mo:base/Nat";
 import D "mo:base/Debug";
-import CertifiedData "mo:base/CertifiedData";
 import AssocList "mo:base/AssocList";
 import Error "mo:base/Error";
 import List "mo:base/List";
@@ -101,15 +99,11 @@ shared (_init_msg) actor class Plantify() = this {
     let ct = CertTree.Ops(cert_store);
 
     private func get_certificate_store() : CertTree.Store {
-        D.print("returning cert store " # debug_show (cert_store));
         return cert_store;
     };
 
     private func updated_certification(cert : Blob, lastIndex : Nat) : Bool {
-
-        D.print("updating the certification " # debug_show (CertifiedData.getCertificate(), ct.treeHash()));
         ct.setCertifiedData();
-        D.print("did the certification " # debug_show (CertifiedData.getCertificate()));
         return true;
     };
 
@@ -121,7 +115,6 @@ shared (_init_msg) actor class Plantify() = this {
     };
 
     func ensure_block_types(icrc3Class : ICRC3.ICRC3) : () {
-        D.print("in ensure_block_types: ");
         let supportedBlocks = Buffer.fromIter<ICRC3.BlockType>(icrc3Class.supported_block_types().vals());
 
         let blockequal = func(a : { block_type : Text }, b : { block_type : Text }) : Bool {
@@ -153,8 +146,6 @@ shared (_init_msg) actor class Plantify() = this {
         switch (_icrc3) {
             case (null) {
                 let initclass : ICRC3.ICRC3 = ICRC3.ICRC3(?icrc3_migration_state, Principal.fromActor(this), get_icrc3_environment());
-
-                D.print("ensure should be done: " # debug_show (initclass.supported_block_types()));
                 _icrc3 := ?initclass;
                 ensure_block_types(initclass);
 
@@ -302,6 +293,30 @@ shared (_init_msg) actor class Plantify() = this {
         var tokensWithMetadata = Buffer.Buffer<TokenWithMetadata>(2);
 
         let tokenIds = icrc7().get_tokens_paginated(prev, take);
+
+        for (tokenId in tokenIds.vals()) {
+            let metadata : [?[(Text, ICRC7.Value)]] = icrc7().token_metadata([tokenId]);
+            tokensWithMetadata.add({ id = tokenId; metadata = metadata });
+        };
+
+        return Buffer.toArray(tokensWithMetadata);
+    };
+
+    public shared (msg) func transfer_from<system>(args : [TransferFromArg]) : async [?TransferFromResult] {
+        icrc37().transfer_from(msg.caller, args);
+    };
+
+    public query func tokens_owner(token_ids : OwnerOfRequest) : async OwnerOfResponse {
+        switch (icrc7().get_token_owners(token_ids)) {
+            case (#ok(val)) val;
+            case (#err(err)) D.trap(err);
+        };
+    };
+
+    public query func icrc7_tokens_of(account : Account, prev : ?Nat, take : ?Nat) : async [TokenWithMetadata] {
+        var tokensWithMetadata = Buffer.Buffer<TokenWithMetadata>(2);
+
+        let tokenIds = icrc7().get_tokens_of_paginated(account, prev, take);
 
         for (tokenId in tokenIds.vals()) {
             let metadata : [?[(Text, ICRC7.Value)]] = icrc7().token_metadata([tokenId]);
