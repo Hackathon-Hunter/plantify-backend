@@ -327,3 +327,22 @@ shared (_init_msg) actor class Plantify() = this {
     };
 
 };
+public shared (msg) func approve_token(args : [ApproveTokenArg]) : async [ApproveTokenResult] {
+    icrc37().approve_token(msg.caller, args);
+};
+
+public shared (msg) func revoke_token_approval(args : [RevokeTokenApprovalArg]) : async [RevokeTokenApprovalResult] {
+    icrc37().revoke_token_approval(msg.caller, args);
+};
+
+public shared (msg) func approve_collection(args : [ApproveCollectionArg]) : async [ApproveCollectionResult] {
+    icrc37().approve_collection(msg.caller, args);
+};
+
+public shared (msg) func revoke_collection_approval(args : [RevokeCollectionApprovalArg]) : async [RevokeCollectionApprovalResult] {
+    icrc37().revoke_collection_approval(msg.caller, args);
+};
+
+public query func is_approved(args : [IsApprovedArg]) : async [ApprovalInfo] {
+    icrc37().is_approved(args);
+};
